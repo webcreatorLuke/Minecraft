@@ -14,7 +14,7 @@ A voxel-based 3D game inspired by Minecraft, built with Three.js.
 
 ## How to Run
 
-download the file then go to 
+download the file 
 
 Then visit `http://localhost:8080` in your browser.
 
