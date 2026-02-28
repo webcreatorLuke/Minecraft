@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BlockCraft - Minecraft-like Game</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; }
+    #game-container { width: 100vw; height: 100vh; position: relative; }
+    #game-canvas { display: block; width: 100%; height: 100%; }
+    
+    /* Main Menu */
+    #main-menu {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      z-index: 100; transition: opacity 0.3s;
+    }
+    #main-menu.hidden { opacity: 0; pointer-events: none; }
+    #loading-overlay {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center;
+      z-index: 110; color: white; font-size: 1.5rem;
+    }
+    #loading-overlay.visible { display: flex; }
+    
+    .menu-title {
+      font-size: 4rem; font-weight: bold; color: #e8e8e8;
+      text-shadow: 3px 3px 0 #4a4a4a, 6px 6px 0 #2a2a2a;
+      margin-bottom: 4rem; letter-spacing: 4px;
+    }
+    
+    .menu-btn {
+      min-width: 280px; padding: 16px 48px; margin: 12px;
+      font-size: 1.4rem; font-weight: 600; border: none; cursor: pointer;
+      background: linear-gradient(180deg, #4a7c59 0%, #3d6b4a 100%);
+      color: white; border-radius: 4px; box-shadow: 0 4px 0 #2d5a3a;
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+    .menu-btn:hover {
+      transform: translateY(-2px); box-shadow: 0 6px 0 #2d5a3a;
+    }
+    .menu-btn:active {
+      transform: translateY(2px); box-shadow: 0 2px 0 #2d5a3a;
+    }
+    .menu-btn.secondary {
+      background: linear-gradient(180deg, #5a5a6a 0%, #4a4a5a 100%);
+      box-shadow: 0 4px 0 #3a3a4a;
+    }
+    .menu-btn.secondary:hover { box-shadow: 0 6px 0 #3a3a4a; }
+    .menu-btn.secondary:active { box-shadow: 0 2px 0 #3a3a4a; }
+    
+    /* Pause Menu (ESC) */
+    #pause-menu {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center;
+      z-index: 90;
+    }
+    #pause-menu.visible { display: flex; }
+    
+    .pause-panel {
+      background: linear-gradient(180deg, #2a2a3a 0%, #1e1e2e 100%);
+      padding: 2rem 3rem; border-radius: 8px; text-align: center;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5); border: 2px solid #4a4a5a;
+    }
+    .pause-title { font-size: 2rem; color: #e8e8e8; margin-bottom: 2rem; }
+    
+    /* Settings Panel */
+    #settings-panel {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+      display: none; flex-direction: column; overflow-y: auto; z-index: 95;
+    }
+    #settings-panel.visible { display: flex; }
+    
+    .settings-header {
+      padding: 1.5rem 2rem; background: rgba(0,0,0,0.3);
+      display: flex; align-items: center; gap: 1rem;
+    }
+    .settings-back-btn {
+      padding: 8px 20px; font-size: 1rem; cursor: pointer;
+      background: #4a5a6a; color: white; border: none; border-radius: 4px;
+    }
+    .settings-back-btn:hover { background: #5a6a7a; }
+    .settings-title { font-size: 1.5rem; color: #e8e8e8; }
+    
+    .settings-tabs {
+      display: flex; gap: 4px; padding: 1rem 2rem; background: rgba(0,0,0,0.2);
+      flex-wrap: wrap;
+    }
+    .settings-tab {
+      padding: 10px 20px; background: #3a3a4a; color: #b0b0b0;
+      border: none; cursor: pointer; border-radius: 4px; font-size: 0.95rem;
+    }
+    .settings-tab:hover { background: #4a4a5a; color: white; }
+    .settings-tab.active { background: #4a7c59; color: white; }
+    
+    .settings-content { padding: 2rem; flex: 1; }
+    .settings-section { display: none; }
+    .settings-section.active { display: block; }
+    
+    .setting-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.1);
+      flex-wrap: wrap; gap: 1rem;
+    }
+    .setting-label { color: #d0d0d0; font-size: 1rem; }
+    .setting-control { display: flex; align-items: center; gap: 12px; }
+    
+    input[type="range"] { width: 150px; cursor: pointer; }
+    input[type="checkbox"] { width: 20px; height: 20px; cursor: pointer; }
+    select {
+      padding: 8px 12px; background: #3a3a4a; color: white;
+      border: 1px solid #5a5a6a; border-radius: 4px; cursor: pointer;
+    }
+    
+    .reset-btn {
+      padding: 6px 16px; font-size: 0.9rem; background: #5a4a4a;
+      color: white; border: none; border-radius: 4px; cursor: pointer;
+    }
+    .reset-btn:hover { background: #6a5a5a; }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="game-canvas"></canvas>
+    
+    <div id="loading-overlay">Generating world...</div>
+    <!-- Main Menu -->
+    <div id="main-menu">
+      <h1 class="menu-title">BLOCKCRAFT</h1>
+      <button class="menu-btn" id="play-btn">Play Game</button>
+      <button class="menu-btn secondary" id="settings-btn">Settings</button>
+    </div>
+    
+    <!-- Pause Menu (ESC) -->
+    <div id="pause-menu">
+      <div class="pause-panel">
+        <h2 class="pause-title">Game Menu</h2>
+        <button class="menu-btn" id="back-to-game-btn">Back to Game</button>
+        <button class="menu-btn secondary" id="pause-options-btn">Options</button>
+        <button class="menu-btn secondary" id="save-quit-btn">Save and Quit</button>
+      </div>
+    </div>
+    
+    <!-- Settings Panel -->
+    <div id="settings-panel">
+      <div class="settings-header">
+        <button class="settings-back-btn" id="settings-back-btn">Done</button>
+        <h2 class="settings-title">Options</h2>
+      </div>
+      <div class="settings-tabs">
+        <button class="settings-tab active" data-tab="video">Video</button>
+        <button class="settings-tab" data-tab="graphics">Graphics</button>
+        <button class="settings-tab" data-tab="controls">Controls</button>
+        <button class="settings-tab" data-tab="sound">Music & Sounds</button>
+        <button class="settings-tab" data-tab="accessibility">Accessibility</button>
+      </div>
+      <div class="settings-content">
+        <!-- Video -->
+        <div class="settings-section active" id="section-video">
+          <div class="setting-row">
+            <span class="setting-label">Fullscreen</span>
+            <div class="setting-control">
+              <input type="checkbox" id="fullscreen" />
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">GUI Scale</span>
+            <div class="setting-control">
+              <select id="gui-scale">
+                <option value="1">Small</option>
+                <option value="2" selected>Normal</option>
+                <option value="3">Large</option>
+                <option value="4">Auto</option>
+              </select>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Brightness</span>
+            <div class="setting-control">
+              <input type="range" id="brightness" min="0" max="100" value="50" />
+              <span id="brightness-val">50%</span>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">FOV</span>
+            <div class="setting-control">
+              <input type="range" id="fov" min="30" max="110" value="70" />
+              <span id="fov-val">70°</span>
+            </div>
+          </div>
+          <button class="reset-btn" data-reset="video">Reset to Default</button>
+        </div>
+        
+        <!-- Graphics -->
+        <div class="settings-section" id="section-graphics">
+          <div class="setting-row">
+            <span class="setting-label">Render Distance</span>
+            <div class="setting-control">
+              <input type="range" id="render-distance" min="4" max="24" value="12" />
+              <span id="render-distance-val">12 chunks</span>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Graphics</span>
+            <div class="setting-control">
+              <select id="graphics-quality">
+                <option value="fast">Fast</option>
+                <option value="fancy" selected>Fancy</option>
+                <option value="fabulous">Fabulous!</option>
+              </select>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Smooth Lighting</span>
+            <div class="setting-control">
+              <input type="checkbox" id="smooth-lighting" checked />
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Max Framerate</span>
+            <div class="setting-control">
+              <select id="max-framerate">
+                <option value="30">30</option>
+                <option value="60">60</option>
+                <option value="120">120</option>
+                <option value="144">144</option>
+                <option value="unlimited" selected>Unlimited</option>
+              </select>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">View Bobbing</span>
+            <div class="setting-control">
+              <input type="checkbox" id="view-bobbing" checked />
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Clouds</span>
+            <div class="setting-control">
+              <input type="checkbox" id="clouds" checked />
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Particles</span>
+            <div class="setting-control">
+              <select id="particles">
+                <option value="all">All</option>
+                <option value="decreased">Decreased</option>
+                <option value="minimal">Minimal</option>
+                <option value="off">Off</option>
+              </select>
+            </div>
+          </div>
+          <button class="reset-btn" data-reset="graphics">Reset to Default</button>
+        </div>
+        
+        <!-- Controls -->
+        <div class="settings-section" id="section-controls">
+          <div class="setting-row">
+            <span class="setting-label">Mouse Sensitivity</span>
+            <div class="setting-control">
+              <input type="range" id="mouse-sensitivity" min="0" max="200" value="100" />
+              <span id="mouse-sensitivity-val">100%</span>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Invert Y-Axis</span>
+            <div class="setting-control">
+              <input type="checkbox" id="invert-y" />
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Auto Jump</span>
+            <div class="setting-control">
+              <input type="checkbox" id="auto-jump" />
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Sprint: Left Ctrl</span>
+            <div class="setting-control">
+              <span class="setting-label">(Hold to sprint)</span>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Jump: Space</span>
+            <div class="setting-control">
+              <span class="setting-label">(Press to jump)</span>
+            </div>
+          </div>
+          <button class="reset-btn" data-reset="controls">Reset to Default</button>
+        </div>
+        
+        <!-- Sound -->
+        <div class="settings-section" id="section-sound">
+          <div class="setting-row">
+            <span class="setting-label">Master Volume</span>
+            <div class="setting-control">
+              <input type="range" id="master-volume" min="0" max="100" value="100" />
+              <span id="master-volume-val">100%</span>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Music</span>
+            <div class="setting-control">
+              <input type="range" id="music-volume" min="0" max="100" value="100" />
+              <span id="music-volume-val">100%</span>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Ambient / Weather</span>
+            <div class="setting-control">
+              <input type="range" id="ambient-volume" min="0" max="100" value="100" />
+              <span id="ambient-volume-val">100%</span>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Blocks</span>
+            <div class="setting-control">
+              <input type="range" id="blocks-volume" min="0" max="100" value="100" />
+              <span id="blocks-volume-val">100%</span>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Hostile Creatures</span>
+            <div class="setting-control">
+              <input type="range" id="hostile-volume" min="0" max="100" value="100" />
+              <span id="hostile-volume-val">100%</span>
+            </div>
+          </div>
+          <button class="reset-btn" data-reset="sound">Reset to Default</button>
+        </div>
+        
+        <!-- Accessibility -->
+        <div class="settings-section" id="section-accessibility">
+          <div class="setting-row">
+            <span class="setting-label">Show Subtitles</span>
+            <div class="setting-control">
+              <input type="checkbox" id="subtitles" />
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Distortion Effects</span>
+            <div class="setting-control">
+              <input type="checkbox" id="distortion-effects" checked />
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">FOV Effects</span>
+            <div class="setting-control">
+              <input type="checkbox" id="fov-effects" checked />
+            </div>
+          </div>
+          <button class="reset-btn" data-reset="accessibility">Reset to Default</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
