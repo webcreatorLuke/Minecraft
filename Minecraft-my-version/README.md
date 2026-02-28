@@ -14,17 +14,9 @@ A voxel-based 3D game inspired by Minecraft, built with Three.js.
 
 ## How to Run
 
-Open `index.html` in a modern web browser. For best experience, use a local server:
+download the file then go to 
 
-```bash
-# Using Python 3
-python -m http.server 8000
-
-# Or using Node.js (npx)
-npx serve .
-```
-
-Then visit `http://localhost:8000` in your browser.
+Then visit `http://localhost:8080` in your browser.
 
 ## Features
 
